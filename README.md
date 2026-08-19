@@ -1,15 +1,10 @@
-# crime-in-manhattan
-# Manhattan Crime Analysis
+**[Hotspots and Suspect Demographics: An Overview of Crime in Manhattan](https://pikachouse.github.io/crime-in-manhattan/)**
 
 An interactive exploration of the temporal, geographic and demographic trends of Manhattan crime in R.
 
-## Interactive Report
-
-**[Hotspots and Suspect Demographics: An Overview of Crime in Manhattan](https://pikachouse.github.io/crime-in-manhattan/)**
-
 ## Project Overview
 
-This project analyses New York City crime data across multiple premise classifications and time periods to identify patterns in when and where offences were reported, as well as trends in suspect demographics.
+An interactive exploration of the temporal, geographic and demographic trends of Manhattan crime in R.
 
 The analysis includes:
 
