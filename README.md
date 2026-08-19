@@ -5,7 +5,7 @@ An interactive exploration of the temporal, geographic and demographic trends of
 
 ## Interactive Report
 
-**[View the full interactive analysis](https://pikachouse.github.io/crime-in-manhattan/)**
+**[Hotspots and Suspect Demographics: An Overview of Crime in Manhattan](https://pikachouse.github.io/crime-in-manhattan/)**
 
 ## Project Overview
 
