@@ -1,0 +1,374 @@
+---
+title: "Hotspots and Suspect Demographics: An Overview of Crime in Manhattan"
+author: "Theodore Vlahanastasis"
+format:
+  html:
+    embed-resources: true
+    code-fold: true
+    toc: true
+    theme: united
+editor: visual
+---
+
+# Client Bio
+
+[**The** **Manhattan Borough President's Office:**](https://www.manhattanbp.nyc.gov/)
+
+The Office of the Manhattan Borough President (OTMBP) is responsible in committing towards a more equitable, resilient and safe borough. The Borough President Mark Levine ensures most responsiblites of the OTMBP, and encourages active collaborations with local communities to ensure that community welfare is maintained in Manhattan.
+
+![](manhattan%20broough.jpg){fig-align="center"}
+
+- [**Mark Levine's LinkedIn URL**](https://www.linkedin.com/in/markdlevine)
+
+- [**The Manhattan Borough President's Office LinkedIn URL**](https://www.linkedin.com/company/manhattan-borough-president's-office)
+
+# Recommendation
+
+- Resource prioritisation should be allocated towards morning (8AM - 4PM) and afternoon (4PM - 12AM) surveillance across residential and public locations, as these premises contain crime concentrations which are robust.
+
+- Intervention strategies towards offenders aged between 25-44 should address sociological considerations, which could influence these disproportionate peaks in criminal activities.
+
+# Evidence
+
+```{r load-data, cache = TRUE}
+#| message: false
+#| warning: false
+
+library(readr)
+library(dplyr)
+library(lubridate)
+
+#| message: false
+#| warning: false
+
+nypd_complaints = read.csv("NYPD_Complaint_Data_Historic.csv") %>% mutate(CMPLNT_FR_DT = mdy(CMPLNT_FR_DT)) %>% filter(year(CMPLNT_FR_DT) == 2019)
+```
+
+::: panel-tabset
+## Figure 1: Temporal Analysis
+
+```{r}
+#| message: false
+#| warning: false
+
+library(tidyverse)
+library(ggplot2)
+library(hms)
+library(plotly)
+library(lubridate)
+
+crime_type = c("VIOLATION", "MISDEMEANOR", "FELONY")
+
+manhattan_crimes = nypd_complaints %>% 
+  filter(BORO_NM == "MANHATTAN", 
+  !is.na(PREM_TYP_DESC), 
+  !is.na(CMPLNT_FR_TM)) %>% mutate(
+    crime_hour = hour(as_hms(CMPLNT_FR_TM)),
+    time_frames = case_when(
+      crime_hour < 8 ~ "Night (12AM - 8AM)",
+      crime_hour < 16 ~ "Morning (8AM - 4PM)",
+      TRUE ~ "Afternoon (4PM - 12AM)"))
+   
+premises5 = manhattan_crimes %>% count(PREM_TYP_DESC, sort = TRUE) %>%
+  slice_max(n, n = 5) %>% pull(PREM_TYP_DESC)
+
+main_premises = manhattan_crimes %>% filter(PREM_TYP_DESC %in% premises5) %>%
+  count(time_frames, PREM_TYP_DESC)
+
+main_premises = main_premises %>% mutate(PREM_TYP_DESC = recode(PREM_TYP_DESC,
+    "RESIDENCE - PUBLIC HOUSING" = "Public Housings",
+    "RESIDENCE - APT. HOUSE" = "Apartment Housings",
+    "TRANSIT - NYC SUBWAY" = "Transit Subways",
+    "CHAIN STORE" = "Chain Stores",
+    "STREET" = "Streets"))
+
+main_premises = main_premises %>% mutate(time_frames = factor(time_frames, levels = c("Morning (8AM - 4PM)", "Afternoon (4PM - 12AM)", "Night (12AM - 8AM)")))
+  
+colours1 = c(
+  "Morning (8AM - 4PM)" = "#6C7A89", 
+  "Afternoon (4PM - 12AM)" = "#4B6584", 
+  "Night (12AM - 8AM)" = "#2C3E50")
+
+interactive1 = ggplot(main_premises, 
+               aes(x = PREM_TYP_DESC, y = n, fill = time_frames, 
+                    text = paste0("Premise: ", PREM_TYP_DESC,
+                                 "<br>Time: ", time_frames,
+                                 "<br>Crimes: ", n))) +
+
+geom_col(position = "Dodge", color = "#000000", width = 0.7) + 
+
+scale_fill_manual(values = colours1, name = "Time Frame") + 
+
+labs(title = "Crime Hotspots - A Temporal Analysis", 
+       subtitle = "Top 5 Crime Hotspots Differeniated Through Time Frames", 
+       x = "Premise Location", y = "Frequencies of Crimes") +
+
+theme_minimal(base_size = 14)
+
+ggplotly(interactive1, tooltip = "text") %>%
+  layout(title = list(text = "<b>Crime Hotspots - Temporal Analysis</b><br><sup> Per the NYC Open Data [2019]</sup>",
+  x = 0.5, xanchor = "center", font = list(size = 20, color = "#000000")),
+legend = list(orientation = "h",
+    x = 0.475,
+    y = -0.3,
+    xanchor = "center", font = list(size = 12), title = list(text = NULL)),
+margin = list(t = 80, b = 120), xaxis = list(
+  title = list(text = "<b> Premise Location</b>", 
+  font = list(size = 14)),
+  tickfont = list(
+    size = 11, 
+    color = "#000000")), 
+yaxis = list(
+  title = list(
+    text = "<b> Frequnecies of Crimes</b>", 
+    font = list(size = 14)), tickfont = list(size = 11)))
+```
+
+## Figure 2: Chi-Squared Test Results
+
+```{r}
+#| message: false
+#| warning: false
+
+chisquare_result = xtabs(n ~ PREM_TYP_DESC + time_frames, data = main_premises)
+chisquare_test = chisq.test(chisquare_result)
+```
+
+| Statistical Metric | Statistical Value |
+|:------------------:|:-----------------:|
+|  Chi-Squared (χ²)  |      1359.7       |
+| Degrees of Freedom |         8         |
+|      P-Value       |    \< 2.2e-16     |
+
+## Figure 3: Residuals Table
+
+```{r, echo = TRUE, results = 'hide'}
+
+chisquare_test$stdres
+```
+
+| Premise | Morning (8AM - 4PM) | Afternoon (4PM - 12AM) | Night (12AM - 8AM) |
+|:--:|:--:|:--:|:--:|
+| **Apartment Housings** | 15.01 | -17.84 | 3.83 |
+| **Chain Stores** | 20.79 | -3.64 | -20.96 |
+| **Public Housings** | -8.09 | 12.11 | -5.18 |
+| **Streets** | -24.92 | 14.03 | 13.07 |
+| **Transit Subways** | 5.78 | -6.02 | 0.43 |
+:::
+
+Crimes which were committed on streets demonstrated significant disproportions between temporal categories, with 45.7% of street-related crimes committed within the afternoon (4PM - 12AM) intervals, whereas 32.3% and 22.0% of street-related crimes were committed within the morning (8AM - 4PM) and night (12AM - 8AM) intervals. These statistical trends were not sustained across the remaining premise locations though, with predominant proportions of criminal activities committed within the mornings. However, crimes committed within the night-intervals represented the smallest proportions of crimes committed within the main premises. These temporal and spatial considerations align towards the sociological publications of Cohen and Felson (1979), whom established that the incidence of criminal activities were more common when offenders could converge towards suitable targets in the absence of protection.
+
+Further analysis was implemented through a chi-squared test of independence, with the assumptions independence, mutually exclusiveness and Cochran's Rule maintained. The null-hypothesis assumes that the distributions of crimes are independent of temporal and spatial considerations. An analysis of the results (χ² = 1359.7, p \< 2.2e-16) presents substantial evidence to reject the null-hypothesis, and conclude that there could be an association between distributions of crime with temporal and spatial considerations.
+
+::: panel-tabset
+## Figure 4: Ethnicity + Age Distribution
+
+```{r}
+#| message: false
+#| warning: false
+
+library(ggplot2)
+library(plotly)
+
+top_ethnicities= nypd_complaints %>%
+  filter(BORO_NM == "MANHATTAN", !is.na(SUSP_RACE), SUSP_RACE != "", SUSP_RACE != "UNKNOWN") %>%
+  count(SUSP_RACE, sort = TRUE) %>%
+  slice_max(n, n = 4) %>% pull(SUSP_RACE)
+
+top_ethnicities_age = nypd_complaints %>% filter(
+  BORO_NM == "MANHATTAN", 
+  SUSP_RACE %in% top_ethnicities, 
+  !is.na(SUSP_AGE_GROUP), 
+  SUSP_AGE_GROUP %in% c("<18", "18-24", "25-44", "45-64", "65+")) %>% 
+  count(SUSP_RACE, SUSP_AGE_GROUP) %>%
+  
+  mutate(SUSP_RACE = factor(SUSP_RACE, levels = top_ethnicities), SUSP_AGE_GROUP = fct_relevel(SUSP_AGE_GROUP, "<18", "18-24", "25-44", "45-64", "65+"))
+
+age_colours = c(
+  "<18" = "#95A5A6",
+  "18-24" = "#6C7A89",
+  "25-44" = "#4B6584",
+  "45-64" = "#4F5B62",
+  "65+" = "#2E3E4E")
+  
+interactive2 = ggplot(top_ethnicities_age, aes(x = SUSP_AGE_GROUP, y = n, fill = SUSP_AGE_GROUP, text = paste0(
+  "Ethnicity: ", SUSP_RACE,
+  "<br>Age Group: ", SUSP_AGE_GROUP,
+  "<br>Count: ", n))) +
+  
+  geom_bar(stat = "identity", color = "#000000", width = 0.7) + 
+  facet_wrap(~ SUSP_RACE, nrow = 1) +
+  scale_fill_manual(
+    name = "Age Group",
+    values = age_colours) +
+  
+  labs(y = "<b>Number of Complaints<b>") + theme_minimal(base_size = 12) + theme(
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    panel.grind.minor = element_blank(),
+    legend.position = "bottom",
+    legend.title = element_text(size = 12),
+    strip.text = element_text(face = "bold", size = 12))
+
+ggplotly(interactive2, tooltip = "text") %>%
+  layout(
+    title = list(text = "<b>Suspects Based on Ethncities + Age Distribution</b><br><sup>Per the NYC Open Data [2019]</sup>", x= 0.5, xanchor = "center", font = list(size = 18)),
+margin = list(t = 100, b= 100, l = 60, r = 60), 
+legend = list(
+  orientation = "h",
+  x = 0.5, xanchor = "center",
+  y = -0.05))
+```
+
+## Figure 5: Fisher Test
+
+```{r, include = FALSE}
+#| message: false
+#| warning: false
+
+nypd_fisher = nypd_complaints %>% filter(
+  BORO_NM == "MANHATTAN",
+  SUSP_AGE_GROUP %in% c("<18", "18-24", "25-44", "45-64", "65+"),
+  !is.na(SUSP_RACE)) %>% mutate(
+    AGE_25_44 = ifelse(SUSP_AGE_GROUP == "25-44", "25-44", "Other"),
+    RACE_GROUP = ifelse(SUSP_RACE == "BLACK", "BLACK", "Non-Black"))
+
+contigencies = table(nypd_fisher$RACE_GROUP, nypd_fisher$AGE_25_44)
+
+fisher.test(contigencies)
+```
+
+|    Statistical Metric     | Statistical Value |
+|:-------------------------:|:-----------------:|
+|          P-Value          |    \< 2.2e-16     |
+| Confidence Interval (95%) | \[0.821, 0.880\]  |
+|        Odds Ratio         |       0.850       |
+
+## Figure 6: Visualisation Of Results
+
+```{r}
+#| message: false
+#| warning: false
+
+library(plotly)
+library(ggplot2)
+
+visualisation_data = nypd_complaints %>%
+  filter(
+    BORO_NM == "MANHATTAN",
+    SUSP_AGE_GROUP %in% c("<18", "18-24", "25-44", "45-64", "65+"),
+    !is.na(SUSP_RACE)) %>%
+  mutate(
+    AGE_GROUP = ifelse(SUSP_AGE_GROUP == "25-44", "25-44", "Other"),
+    RACE_GROUP = ifelse(SUSP_RACE == "BLACK", "Black", "Non-Black")) %>% 
+  count(RACE_GROUP, AGE_GROUP) %>% group_by(RACE_GROUP) %>% mutate(
+    Proportion = n / sum(n))
+
+colours2 = c("Black" = "#4B6584", "Non-Black" = "#2C3E50") 
+
+p = ggplot(visualisation_data %>% filter(AGE_GROUP == "25-44"),
+  aes(x = RACE_GROUP, y = Proportion, fill = RACE_GROUP,
+      text = paste0("Group: ", RACE_GROUP, "<br>Proportion: ", scales :: percent(Proportion, accuracy = 0.1)))) +
+    geom_col(width = 0.5, color = "#000000", linewidth = 1) + 
+    scale_fill_manual(values = colours2) + 
+    scale_y_continuous(labels = scales :: percent_format(accuracy = 1)) + 
+    labs(x = NULL, y = NULL) + theme_minimal(base_size = 14) +
+    theme(
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor = element_blank(),
+      legend.position = "none",
+      axis.text.x = element_text(size = 14, face = "bold"),
+      axis.text.y = element_text(size = 12))
+
+ggplotly(p, tooltip = "text") %>% layout(
+  title = list(text = "<b>Proportion of Suspects Aged 25-44</b><br><b>Black vs Non-Black in Manhattan (2019)</b>", x = 0.5, xanchor = "center"),
+yaxis = list(ticksuffix = "%"), xaxis = list(title = "", tickfont = list(size = 14, color = "#000000", weight = "bold")),
+margin = list(t = 80), font = list(size = 14, color = "#000000"), 
+plot_bgcolor = "#FFFFFF",
+paper_bgcolor = "#FFFFFF")
+
+```
+:::
+
+The demographic races maintained similar, near symmetrical distributions, with established peaks (25-44) observable across all races. Though being representative of only 11.8% of Manhattan's population (US Census 2020), Black individuals committed the largest proportion of crimes (52%).
+
+Through the conduction of a Fisher's test (Figure 5), which compared the probabilities of offenders (25-44) across the demographic race, a significant conclusion was drawn (p \< 2.2e-16), suggesting that the association between criminal activities, association and age distributions were not subsequent from random variation. However, the odds ratio (0.850) indicated that from an overall proportional perspective (Figure 6), non-Black offenders committed more crimes than Black offenders, suggesting a disproportional representation.
+
+These divergences between absolute and relative measures aligns towards the demographic publications of Brayne (2017), whom exaggerated the potential discrepancies in reliance on the raw counts of distributions rather than proportions when investigating offending demographics.
+
+# Limitations
+
+- Though the aggregation of temporal categories into three, broader intervals provides clearer visualisations and interpretations, the more intricate temporal patterns within each time frame may not be adequately represented, sacrificing statistical precision and incorporation into policing requirements.
+
+- The analysis does not examine socioeconomic or environmental considerations, which could have significant influences in relation to the demographic, spatial and temporal considerations of crime, hindering capacities to make reasonable recommendations.
+
+# Ethics Statement
+
+This project demonstrates alignment towards ***professionalism*** through methodical statistical practices, which have been appropriately and subsequently documented within a presentable manner. Furthermore, the project maintains ***confidence within statistics*** through the consideration of potential limitations within the project, ensuring to users that all statistical conclusions and relevant are transparent in nature.
+
+# AI Usage Statement
+
+The project acknowledges the utilisation of Artificial Intelligence (AI), which was implemented through the subsequent prompts:
+
+| Date of Usage | Link To Prompt | AI Tool | Brief Explanation of AI Tool's Implementation + Section(s) Used Within |
+|:--:|:--:|:--:|:--:|
+| 14/05/25 | <https://chatgpt.com/share/682caa1a-0f48-800a-80bb-bf32164fb478> | ChatGPT | I sought assistance in accordance to using the slice_max() function, as I was unable to use the function in a proper manner. I was provided with the general syntax required in the implementation of the function, which provided assistance within the [Evidence Section.]{.underline} |
+| 15/05/25 | <https://chatgpt.com/share/682caabc-0c00-800a-aef0-04751995d80e> | ChatGPT | I had forgotten how to appropriately filter out NA values within my data-set during the data-cleaning procedures, and this prompt informed such solution. The filter() functions within the project were used in the [Evidence Section.]{.underline} |
+| 15/05/25 | <https://chatgpt.com/share/682cabc2-1760-8002-aa0b-047ac5fa7c5b> | ChatGPT | Since we were working with a very large .csv file, I wanted to find an efficient method to reduce the amount of time I needed to render my document. I wanted a very simple solution, so I sought assistance. This singular line of code was very important, saving me countless minutes / hours of rendering. |
+| 15/05/25 | <https://chatgpt.com/share/682cacdd-48ec-8002-b635-94298056cdf0> | ChatGPT | Since I was presenting the finding(s) of my chi-squared in a more aesthetic tabular format, I wanted to show the marker the code I used to yield these results, but I did not want the code to output anything. I sought assistance in ensuring that the code was present, but no output was given. Though the solution was one line, it was detrimental in maintaining professionalism and coherence in the HTML. |
+| 21/05/25 | <https://chatgpt.com/share/682dd2d9-91b8-8002-b3af-b4ea5a55d0fb> | ChatGPT | I was running into some difficulties regarding the chi-squared test, as I mutated my data-set in ways which was not supported by the chi-squared test, e.g. my observations were not raw counts observations, but instead mutated, and summed counts. Hence, I needed to use the "xtabs" function, which would allow me to conduct the test appropriately. I sought assistance in formatting this code, which was then used within the [Evidence Section.]{.underline} |
+
+# Acknowledgements
+
++-------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| External Evidence Type  | Referencing of External Evidence                                                                                                                                                         |
++:=======================:+:========================================================================================================================================================================================:+
+| Peer Reviewed Article 1 | Cohen, L. E., & Felson, M. (1979). Social Change and Crime Rate Trends: A Routine Activity Approach. *American Sociological Review*, *44*(4), 588–608. <https://doi.org/10.2307/2094589> |
++-------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Peer Reivewed Article 2 | Brayne, S. (2017). Big Data Surveillance: The Case of Policing. American Sociological Review, 82(5), 977–1008.\                                                                          |
+|                         | <https://doi.org/10.1177/0003122417725865>                                                                                                                                               |
++-------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| 2020 US Census          | Explore Census Data. (2020). Data.census.gov.                                                                                                                                            |
+|                         |                                                                                                                                                                                          |
+|                         | <https://data.census.gov/profile/Manhattan_borough>‌                                                                                                                                      |
++-------------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+| Citations For URLs | Brief Explanation of Implementation |
+|:--:|:--:|
+| <https://www.youtube.com/watch?v=wo6FSaz9AlE> | I watched this video to enhance my knowledge in creating a very aesthetic data visualisations through the geom_col() function and other features also. |
+| <https://plotly.com/r/styling-figures/> | Since I wanted to work with interactive plots, the aesthetic features would be lost as the layout() feature in interactive plots controls most of the aesthetic qualities of graphs. Hence, I needed to become more comfortable in utilising these functions so I could ensure that my outputs are clean and neat. |
+| <https://dplyr.tidyverse.org/reference/count.html> | Informed me of how to use the count() function, as I needed this function in order to count the number of unique values within my data-set in the different graphs. |
+| [https://tidyr.tidyverse.org/articles/pivot.htm](https://tidyr.tidyverse.org/articles/pivot.html#:~:text=pivot_wider()%20is%20the%20opposite,format%20needed%20by%20other%20tools.) | This was viewed in case I was required in making adjustments to my data-set in an appropriate manner. |
+| <https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/fisher.test> | I was unsure of how to use the Fisher's test in an appropriate manner, so I used this reference to assist me. I was also unfamiliar with Fisher's test entirely, so this provided me with some extra knowledge required to perform the test in an accurate manner. |
+
++-------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Packages Utilised | Citation of Packages                                                                                                                                                                                                                                                                                                                                               |
++:=================:+:==================================================================================================================================================================================================================================================================================================================================================================:+
+| Readr:            | Wickham H, Hester J, Bryan J (2024). *readr: Read Rectangular Text Data*. R package version 2.1.5,                                                                                                                                                                                                                                                                 |
+|                   |                                                                                                                                                                                                                                                                                                                                                                    |
+|                   | <https://CRAN.R-project.org/package=readr>.                                                                                                                                                                                                                                                                                                                        |
++-------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Dplyr:            | Wickham H, François R, Henry L, Müller K, Vaughan D (2023). *dplyr: A Grammar of Data Manipulation*. R package version 1.1.4,                                                                                                                                                                                                                                      |
+|                   |                                                                                                                                                                                                                                                                                                                                                                    |
+|                   | <https://CRAN.R-project.org/package=dplyr>.                                                                                                                                                                                                                                                                                                                        |
++-------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Lubridate:        | Garrett Grolemund, Hadley Wickham (2011). Dates and Times Made Easy with lubridate. Journal of Statistical Software, 40(3), 1-25. URL                                                                                                                                                                                                                              |
+|                   |                                                                                                                                                                                                                                                                                                                                                                    |
+|                   | <https://www.jstatsoft.org/v40/i03/.>                                                                                                                                                                                                                                                                                                                              |
++-------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Tidyverse:        | Wickham H, Averick M, Bryan J, Chang W, McGowan LD, François R, Grolemund G, Hayes A, Henry L, Hester J, Kuhn M, Pedersen TL, Miller E, Bache SM, Müller K, Ooms J, Robinson D, Seidel DP, Spinu V, Takahashi K, Vaughan D, Wilke C, Woo K, Yutani H (2019). “Welcome to the tidyverse.” *Journal of Open Source Software*, *4*(43), 1686. doi:10.21105/joss.01686 |
+|                   |                                                                                                                                                                                                                                                                                                                                                                    |
+|                   | <https://doi.org/10.21105/joss.01686>.                                                                                                                                                                                                                                                                                                                             |
++-------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Plotly:           | C. Sievert. Interactive Web-Based Data Visualization with R, plotly, and shiny. Chapman and Hall/CRC Florida, 2020.\                                                                                                                                                                                                                                               |
+|                   | \                                                                                                                                                                                                                                                                                                                                                                  |
+|                   | <https://plotly-r.com>                                                                                                                                                                                                                                                                                                                                             |
++-------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Hms:              | Müller K (2023). *hms: Pretty Time of Day*. R package version 1.1.3,                                                                                                                                                                                                                                                                                               |
+|                   |                                                                                                                                                                                                                                                                                                                                                                    |
+|                   | <https://CRAN.R-project.org/package=hms>.                                                                                                                                                                                                                                                                                                                          |
++-------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Ggplot2:          | H. Wickham. ggplot2: Elegant Graphics for Data Analysis. Springer-Verlag New York, 2016.                                                                                                                                                                                                                                                                           |
+|                   |                                                                                                                                                                                                                                                                                                                                                                    |
+|                   | <https://ggplot2.tidyverse.org>                                                                                                                                                                                                                                                                                                                                    |
++-------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
