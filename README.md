@@ -1,10 +1,8 @@
 ## **[Hotspots and Suspect Demographics: An Overview of Crime in Manhattan](https://pikachouse.github.io/crime-in-manhattan/)**
 
-## Project Overview
-
 An interactive exploration of the temporal, geographic and demographic trends of Manhattan crime in R.
 
-The analysis includes:
+The reproducible markdown includes:
 
 * Appropriate data cleaningg and transformation to raw observations. 
 * Exploratory data analysis.
