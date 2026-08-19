@@ -1,7 +1,7 @@
 # crime-in-manhattan
 # Manhattan Crime Analysis
 
-An interactive data analysis of crime patterns in Manhattan using **R, Quarto and Plotly**, exploring temporal, geographic and demographic trends.
+An interactive exploration of the temporal, geographic and demographic trends of Manhattan crime in R.
 
 ## Interactive Report
 
@@ -13,13 +13,9 @@ This project analyses New York City crime data across multiple premise classific
 
 The analysis includes:
 
-* Data cleaning and transformation in R
-* Exploratory data analysis
-* Interactive data visualisation
-* Temporal and geographic analysis
-* Statistical hypothesis testing
-* Interpretation of key findings and limitations
-
-## Tools
-
-R · Quarto · dplyr · tidyverse · lubridate · ggplot2 · Plotly
+* Appropriate data cleaningg and transformation to raw observations. 
+* Exploratory data analysis.
+* Interactive data visualisations. 
+* Temporal and geographic statistical analysis.
+* Statistical hypothesis testing.
+* Interpretation of core insights and limitations.
