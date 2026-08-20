@@ -1,6 +1,6 @@
 ## **[Hotspots and Suspect Demographics: An Overview of Crime in Manhattan](https://tvlahanastasis.github.io/crime-in-manhattan/)**
 
-An interactive exploration of the temporal, geographic and demographic trends of Manhattan crime in R.
+An interactive exploration of the temporal, geographic and demographic trends of Manhattan crime using R Programming.
 
 The reproducible markdown includes:
 
